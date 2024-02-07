@@ -1,6 +1,6 @@
 # Running the Dataworkz RAG Java QnA Client
 
-You will need Java 11 and maven installed.
+You will need Java 11 and Maven installed.
 
 Perform the following steps to build the client - 
 1. `git clone <TODO>`
