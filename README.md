@@ -3,7 +3,7 @@
 You will need Java 11 and Maven installed.
 
 Perform the following steps to build the client - 
-1. `git clone <TODO>`
+1. `git clone https://github.com/dataworkz-dev/dataworkz-java-qna-client.git`
 2. `cd dataworkz-java-qna-client`
 3. `mvn clean package` 
 
