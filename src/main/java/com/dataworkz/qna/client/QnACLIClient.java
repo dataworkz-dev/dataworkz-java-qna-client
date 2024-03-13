@@ -64,6 +64,9 @@ class DoQuestionCommand extends BaseQnAClient implements Callable<Integer> {
     @CommandLine.Option(names = {"-q", "-question"}, description = "Question Text")
     private String questionText;
 
+    @CommandLine.Option(names = {"-p", "-probe"}, description = "Display probe data")
+    private boolean showProbeData;
+
     @Override
     protected void loadOptions() {
         qnaSystemId = configProps.getProperty("qa");
@@ -97,12 +100,18 @@ class DoQuestionCommand extends BaseQnAClient implements Callable<Integer> {
         List<Map<String, Object>> context = (List<Map<String, Object>>) payload.get("context");
         List<String> links = context.stream().map(cMap -> String.valueOf(cMap.get("link"))).collect(Collectors.toList());
         out.put("links", links.toString());
-        Set<String> skipKeys = Set.of("question", "answer", "context");
+        Set<String> skipKeys = new HashSet<>(Set.of("question", "answer", "context"));
+        if (!showProbeData) {
+            skipKeys.add("probe");
+        }
         payload.forEach((s, o) -> {
             if (!skipKeys.contains(s)) {
                 out.put(s, String.valueOf(o));
             }
         });
+        if (!showProbeData) {
+            out.put("probe", "Use -p to show probe data");
+        }
         super.printMapResponse(indent, output, out, entryRenderer);
     }
 }
@@ -216,6 +225,9 @@ class DoGetQuestionCommand extends BaseQnAClient implements Callable<Integer> {
     @CommandLine.Option(names = {"-qId", "-questionId"}, description = "Id of question")
     private String questionId;
 
+    @CommandLine.Option(names = {"-p", "-probe"}, description = "Show probe data")
+    private boolean showProbeData;
+
     @Override
     protected void loadOptions() {
         qnaSystemId = configProps.getProperty("qa");
@@ -245,6 +257,9 @@ class DoGetQuestionCommand extends BaseQnAClient implements Callable<Integer> {
         List<Map<String, String>> context = (List<Map<String, String>>) llmResponseObj.get("context");
         List<String> links = context.stream().map(cMap -> cMap.get("link")).collect(Collectors.toList());
         llmResponseObj.put("links", links.toString());
+        if (!showProbeData) {
+            llmResponseObj.put("probe", "Use -p to show probe data");
+        }
         output.append(CommandLine.Help.Ansi.AUTO.string("\n@|" + KEY_FORMAT + " llm_response |@ : "));
         super.printMapResponse(indent + "\t", output, llmResponseObj, entryRenderer);
         Map<String, Object> rest = new HashMap<>(payload);
