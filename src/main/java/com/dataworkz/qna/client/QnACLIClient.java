@@ -322,7 +322,8 @@ abstract class BaseQnAClient implements Callable<Integer> {
                 }
 
                 if (outf.exists()) {
-                        Files.writeString(outf.toPath(), "", StandardOpenOption.WRITE);
+                    // empty out the output file because we might do APPEND later
+                    Files.writeString(outf.toPath(), "", StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -340,6 +341,11 @@ abstract class BaseQnAClient implements Callable<Integer> {
             long count = inputs.stream().filter(s -> !s.startsWith("#")).count();
             System.out.println("Running " + count + " commands. Delay between commands : " + secondsBetweenQueries + " secs");
             int i = 1;
+            if (format.equals("json")) {
+                doIfOptionPresent(outputFile, () -> {
+                    writeToOutput("[\n");
+                });
+            }
             for (String s : inputs) {
                 if (s.startsWith("# ")) {
                     System.out.printf(s);
@@ -351,11 +357,21 @@ abstract class BaseQnAClient implements Callable<Integer> {
                 RAGResponse response = doCallImpl(dw);
                 System.out.println("... Done. Took " + (System.currentTimeMillis() - time) + " msecs");
                 outputResponse(response);
+                if (format.equals("json")) {
+                    doIfOptionPresent(outputFile, () -> {
+                        writeToOutput(",\n");
+                    });
+                }
                 try {
                     Thread.sleep(secondsBetweenQueries * 1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+            }
+            if (format.equals("json")) {
+                doIfOptionPresent(outputFile, () -> {
+                    writeToOutput("]\n");
+                });
             }
         } else {
             RAGResponse response = doCallImpl(this.dw);
@@ -402,6 +418,18 @@ abstract class BaseQnAClient implements Callable<Integer> {
         payload.entrySet().forEach(e -> renderer.render(e, indent, output));
     }
 
+    protected void writeToOutput(String text) {
+        if (isOptionPresent(outputFile)) {
+            try {
+                Files.writeString(new File(outputFile).toPath(), text, StandardOpenOption.APPEND);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            System.out.println(text);
+        }
+    }
+
     private void outputResponse(RAGResponse response) {
         String output = "";
         if (format.equals("none")) {
@@ -409,19 +437,25 @@ abstract class BaseQnAClient implements Callable<Integer> {
         } else if (format.startsWith("console")) {
             output = getResponseAsString(response);
         } else if (format.equals("json")) {
-            output = String.valueOf(response.getResponse().body());
+            output = getBodyString(response);
         } else {
             throw new IllegalArgumentException("Invalid format value " + format);
         }
-        if (isOptionPresent(outputFile)) {
-            try {
-                Files.writeString(new File(outputFile).toPath(), String.valueOf(response.getResponse().body()), StandardOpenOption.APPEND);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } else {
-            System.out.println(output);
-        }
+        writeToOutput(output);
+//        if (isOptionPresent(outputFile)) {
+////            try {
+////                Files.writeString(new File(outputFile).toPath(), getBodyString(response), StandardOpenOption.APPEND);
+////            } catch (IOException e) {
+////                throw new RuntimeException(e);
+////            }
+//        } else {
+//            System.out.println(output);
+//        }
+    }
+
+    private static String getBodyString(RAGResponse response) {
+        return String.valueOf(response.getResponse().body());
+//        return body.endsWith("\n") ? body : body + "\n";
     }
 
     protected static class EntryRenderer<String, V> {
