@@ -66,8 +66,8 @@ class DoQuestionCommand extends BaseQnAClient implements Callable<Integer> {
 
     @Override
     protected void loadOptions() {
-        qnaSystemId = configProps.getProperty("qa");
-        llmId = configProps.getProperty("llm");
+        qnaSystemId = getOptionValue(qnaSystemId, "qa");
+        llmId = getOptionValue(llmId, "llm");
         if (!isOptionPresent(qnaSystemId)) {
             throw new IllegalArgumentException("A QnA system must be specified using the -qa option");
         }
@@ -127,7 +127,7 @@ class DoListLLMsCommand extends BaseQnAClient implements Callable<Integer> {
 
     @Override
     protected void loadOptions() {
-        qnaSystemId = configProps.getProperty("qa");
+        qnaSystemId = getOptionValue(qnaSystemId, "qa");
         if (!isOptionPresent(qnaSystemId)) {
             throw new IllegalArgumentException("qnaSystemId is required using the -qa option.");
         }
@@ -146,7 +146,7 @@ class DoListQuestionsCommand extends BaseQnAClient implements Callable<Integer> 
 
     @Override
     protected void loadOptions() {
-        qnaSystemId = configProps.getProperty("qa");
+        qnaSystemId = getOptionValue(qnaSystemId,"qa");
         if (!isOptionPresent(qnaSystemId)) {
             throw new IllegalArgumentException("qnaSystemId is required using the -qa option.");
         }
@@ -178,7 +178,7 @@ class DoGetSystemCommand extends BaseQnAClient implements Callable<Integer> {
 
     @Override
     protected void loadOptions() {
-        qnaSystemId = configProps.getProperty("qa");
+        qnaSystemId = getOptionValue(qnaSystemId, "qa");
         if (!isOptionPresent(qnaSystemId) && !isOptionPresent(inputFile)) {
             throw new IllegalArgumentException("qnaSystemId is required using the -qa option.");
         }
@@ -218,7 +218,7 @@ class DoGetQuestionCommand extends BaseQnAClient implements Callable<Integer> {
 
     @Override
     protected void loadOptions() {
-        qnaSystemId = configProps.getProperty("qa");
+        qnaSystemId = getOptionValue(qnaSystemId, "qa");
         if (!isOptionPresent(questionId) && !isOptionPresent(inputFile)) {
             throw new IllegalArgumentException("QuestionId must be specified using -qid option");
         }
@@ -366,6 +366,10 @@ abstract class BaseQnAClient implements Callable<Integer> {
 
     protected void loadInputFromInputFile(int index, String input) {
 
+    }
+
+    protected String getOptionValue(String existing, String configKey) {
+        return (existing == null) ? configProps.getProperty(configKey) : existing;
     }
 
     protected abstract void loadOptions();
