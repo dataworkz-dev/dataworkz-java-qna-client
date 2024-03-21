@@ -346,7 +346,8 @@ abstract class BaseQnAClient implements Callable<Integer> {
                     writeToOutput("[\n");
                 });
             }
-            for (String s : inputs) {
+            for (int idx = 0; idx < inputs.size(); idx++) {
+                String s = inputs.get(idx);
                 if (s.startsWith("# ")) {
                     System.out.printf(s);
                     continue;
@@ -358,9 +359,11 @@ abstract class BaseQnAClient implements Callable<Integer> {
                 System.out.println("... Done. Took " + (System.currentTimeMillis() - time) + " msecs");
                 outputResponse(response);
                 if (format.equals("json")) {
-                    doIfOptionPresent(outputFile, () -> {
-                        writeToOutput(",\n");
-                    });
+                    if (idx + 1 < inputs.size()) {
+                        doIfOptionPresent(outputFile, () -> {
+                            writeToOutput(",\n");
+                        });
+                    }
                 }
                 try {
                     Thread.sleep(secondsBetweenQueries * 1000);
