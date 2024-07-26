@@ -25,7 +25,8 @@ import static com.dataworkz.qna.client.QnACLIClient.*;
             DoListLLMsCommand.class,
             DoQuestionCommand.class,
             DoListQuestionsCommand.class,
-            DoGetQuestionCommand.class
+            DoGetQuestionCommand.class,
+            DoSemanticSearchCommand.class
         }
 )
 public class QnACLIClient {
@@ -38,7 +39,8 @@ public class QnACLIClient {
             "get-system", new DoGetSystemCommand(),
             "list-llms", new DoListLLMsCommand(),
             "list-questions", new DoListQuestionsCommand(),
-            "get-questions", new DoGetQuestionCommand()
+            "get-questions", new DoGetQuestionCommand(),
+            "search", new DoSemanticSearchCommand()
     );
 
 
@@ -63,9 +65,17 @@ class DoQuestionCommand extends BaseQnAClient implements Callable<Integer> {
     private String qnaSystemId;
     @CommandLine.Option(names = {"-q", "-question"}, description = "Question Text")
     private String questionText;
+    @CommandLine.Option(names = {"-ft", "-filter"}, description = "Filter String")
+    private String filterString;
+
+    @CommandLine.Option(names = {"-qp", "-query-plan"}, description = "Query Plan")
+    private String queryPlan;
 
     @CommandLine.Option(names = {"-p", "-probe"}, description = "Display probe data")
     private boolean showProbeData;
+
+    @CommandLine.Option(names = {"-ps", "-properties"}, description = "Pass properties")
+    private String properties;
 
     @Override
     protected void loadOptions() {
@@ -89,7 +99,7 @@ class DoQuestionCommand extends BaseQnAClient implements Callable<Integer> {
 
     @Override
     protected RAGResponse doCallImpl(DataworkzRAG dw) throws URISyntaxException, IOException, InterruptedException {
-        return dw.askQuestion(qnaSystemId, llmId, questionText);
+        return dw.askQuestion(qnaSystemId, llmId, questionText, filterString, queryPlan, properties);
     }
 
     @Override
@@ -265,6 +275,89 @@ class DoGetQuestionCommand extends BaseQnAClient implements Callable<Integer> {
         Map<String, Object> rest = new HashMap<>(payload);
         rest.remove("llm_response");
         super.printMapResponse(indent, output, rest, entryRenderer);
+    }
+}
+
+@CommandLine.Command(name="search", mixinStandardHelpOptions = true, description = "Do Seamntic Search of the query in a QnA system")
+class DoSemanticSearchCommand extends BaseQnAClient implements Callable<Integer> {
+    @CommandLine.Option(names = {"-qa", "-system"}, description = "Id of QnA system to target.")
+    private String qnaSystemId;
+    @CommandLine.Option(names = {"-q", "-question"}, description = "Question Text")
+    private String questionText;
+
+    @CommandLine.Option(names = {"-ft", "-filter"}, description = "Filter String")
+    private String filter;
+
+    @CommandLine.Option(names = {"-qp", "-query-plan"}, description = "Query Plan")
+    private String queryPlan;
+
+    @CommandLine.Option(names = {"-llm"}, description = "Id of LLM to target. Multiple may be provided separated by ;")
+    private String llmId;
+
+    @CommandLine.Option(names = {"-p", "-probe"}, description = "Display probe data")
+    private boolean showProbeData;
+
+    @CommandLine.Option(names = {"-ps", "-properties"}, description = "Pass properties")
+    private String properties;
+
+    @Override
+    protected void loadOptions() {
+        qnaSystemId = getOptionValue(qnaSystemId, "qa");
+        if (!isOptionPresent(qnaSystemId)) {
+            throw new IllegalArgumentException("A QnA system must be specified using the -qa option");
+        }
+        if (!isOptionPresent(questionText) && !isOptionPresent(inputFile)) {
+            throw new IllegalArgumentException("Ask your question using the -q option");
+        }
+    }
+
+    @Override
+    protected void loadInputFromInputFile(int index, String input) {
+        this.questionText = input;
+    }
+
+    @Override
+    protected RAGResponse doCallImpl(DataworkzRAG dw) throws URISyntaxException, IOException, InterruptedException {
+        return dw.search(qnaSystemId, questionText, filter, queryPlan, properties);
+    }
+
+    @Override
+    void printMapResponse(String indent, StringBuilder output, Map<String, ?> payload, EntryRenderer<String, ?> entryRenderer) {
+        Map<String, String> out = new LinkedHashMap<>();
+        out.put("question", String.valueOf(payload.get("question")));
+        Set<String> skipKeys = new HashSet<>(Set.of("query", "searchResultsList", "type"));
+        if (!showProbeData) {
+            skipKeys.add("probe");
+        }
+        payload.forEach((s, o) -> {
+            if (!skipKeys.contains(s)) {
+                out.put(s, String.valueOf(o));
+            }
+        });
+        super.printMapResponse(indent, output, out, entryRenderer);
+        String rindent = indent + "\t";
+        output.append(CommandLine.Help.Ansi.AUTO.string("\n@|" + KEY_FORMAT + " searchResultsList |@ : "));
+        List<Map<String, Object>> context = (List<Map<String, Object>>) payload.get("searchResultsList");
+        int i = 1;
+        for (Map<String, Object> map : context) {
+            String link = String.valueOf(map.get("link"));
+            String score = String.valueOf(map.get("similarityScore"));
+            String text = String.valueOf(map.get("contents"));  // TODO : needs change when api object is made same
+
+            output.append(CommandLine.Help.Ansi.AUTO.string("\n\n" + indent + "@|" + KEY_FORMAT + " Result " + i++ + " |@ : "));
+            output.append(CommandLine.Help.Ansi.AUTO.string(
+                    "@|" + KEY_FORMAT + " \n" + rindent + "link"
+                            + "|@ : @|" + VALUE_FORMAT + " " + link + "|@"));
+            output.append(CommandLine.Help.Ansi.AUTO.string(
+                    "@|" + KEY_FORMAT + " \n" + rindent + "score"
+                            + "|@ : @|" + VALUE_FORMAT + " " + score + "|@"));
+            output.append(CommandLine.Help.Ansi.AUTO.string(
+                    "@|" + KEY_FORMAT + " \n" + rindent + "text"
+                            + "|@ : @|" + VALUE_FORMAT + " " + text + "|@"));
+        }
+        if (!showProbeData) {
+            out.put("probe", "Use -p to show probe data");
+        }
     }
 }
 
