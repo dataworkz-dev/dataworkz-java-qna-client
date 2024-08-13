@@ -137,14 +137,14 @@ public class DataworkzRAG {
         return askQuestion(qnaSystemId, llmProviderId, questionText, null, null, null);
     }
 
-    public RAGResponse askQuestion(String qnaSystemId, String llmProviderId, String questionText, String filterString, String queryPlan, String properties) throws URISyntaxException, IOException, InterruptedException {
+    public RAGResponse askQuestion(String qnaSystemId, String llmProviderId, String questionText, String filterString, String body, String properties) throws URISyntaxException, IOException, InterruptedException {
         properties = properties == null ? "" : properties;
         HttpRequest request = getHttpRequest(
                 filterString == null ? ASK_QUESTION_API : ASK_QUESTION_WITH_FILTER_API,
                 filterString == null
                 ? Map.of("systemId", qnaSystemId, "llmProviderId", llmProviderId, "questionText", questionText, "properties", properties)
                 : Map.of("systemId", qnaSystemId, "llmProviderId", llmProviderId, "questionText", questionText, "filter", filterString, "properties", properties),
-                queryPlan
+                body
         );
         System.out.println(request);
         HttpResponse<String> response = getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());

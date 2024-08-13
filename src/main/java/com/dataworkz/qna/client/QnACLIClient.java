@@ -67,13 +67,12 @@ class DoQuestionCommand extends BaseQnAClient implements Callable<Integer> {
     private String questionText;
     @CommandLine.Option(names = {"-ft", "-filter"}, description = "Filter String")
     private String filterString;
-
-    @CommandLine.Option(names = {"-qp", "-query-plan"}, description = "Query Plan")
+    @CommandLine.Option(names = {"-qp", "-query-plan"}, description = "Query Plan Json Object")
     private String queryPlan;
-
+    @CommandLine.Option(names = {"-ch", "-conversation-history"}, description = "Conversation History Json Array")
+    private String conversationHistory;
     @CommandLine.Option(names = {"-p", "-probe"}, description = "Display probe data")
     private boolean showProbeData;
-
     @CommandLine.Option(names = {"-ps", "-properties"}, description = "Pass properties")
     private String properties;
 
@@ -99,7 +98,34 @@ class DoQuestionCommand extends BaseQnAClient implements Callable<Integer> {
 
     @Override
     protected RAGResponse doCallImpl(DataworkzRAG dw) throws URISyntaxException, IOException, InterruptedException {
-        return dw.askQuestion(qnaSystemId, llmId, questionText, filterString, queryPlan, properties);
+        String body = buildBody(queryPlan, conversationHistory);
+        Gson gson = new Gson();
+        //noinspection unchecked
+        Map<String, String> passedProps = (Map<String, String>) gson.fromJson(properties, new TypeToken<>(){}.getRawType());
+        Map<String, String> props = new HashMap<>(passedProps);
+        props.put("include_probe", String.valueOf(showProbeData));
+        properties = gson.toJson(props);
+        return dw.askQuestion(qnaSystemId, llmId, questionText, filterString, body, properties);
+    }
+
+    protected String buildBody(String queryPlan, String conversationHistory) {
+        StringBuilder builder = new StringBuilder();
+        if (queryPlan != null) {
+            builder.append("{ \"queryPlan\": ").append(queryPlan);
+        }
+        if (conversationHistory != null) {
+            if (queryPlan == null) {
+                builder.append("{ ");
+            } else {
+                builder.append(", ");
+            }
+            builder.append("\"conversationHistory\": ").append(conversationHistory).append(" }");
+        } else {
+            if (queryPlan != null) {
+                builder.append(" }");
+            }
+        }
+        return builder.toString();
     }
 
     @Override
