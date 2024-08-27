@@ -99,12 +99,8 @@ class DoQuestionCommand extends BaseQnAClient implements Callable<Integer> {
     @Override
     protected RAGResponse doCallImpl(DataworkzRAG dw) throws URISyntaxException, IOException, InterruptedException {
         String body = buildBody(queryPlan, conversationHistory);
-        Gson gson = new Gson();
-        //noinspection unchecked
-        Map<String, String> passedProps = (Map<String, String>) gson.fromJson(properties, new TypeToken<>(){}.getRawType());
-        Map<String, String> props = new HashMap<>(passedProps);
-        props.put("include_probe", String.valueOf(showProbeData));
-        properties = gson.toJson(props);
+        properties = properties == null ? "" : properties;
+        properties += (properties.isEmpty() ? "" : ";") + "include_probe=" + showProbeData;
         return dw.askQuestion(qnaSystemId, llmId, questionText, filterString, body, properties);
     }
 
@@ -344,6 +340,8 @@ class DoSemanticSearchCommand extends BaseQnAClient implements Callable<Integer>
 
     @Override
     protected RAGResponse doCallImpl(DataworkzRAG dw) throws URISyntaxException, IOException, InterruptedException {
+        properties = properties == null ? "" : properties;
+        properties += (properties.isEmpty() ? "" : ";") + "include_probe=" + showProbeData;
         return dw.search(qnaSystemId, questionText, filter, queryPlan, properties);
     }
 
