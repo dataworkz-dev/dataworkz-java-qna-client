@@ -157,6 +157,7 @@ public class DataworkzRAG {
     }
 
     public RAGResponse search(String qnaSystemId, String query, String filterString, String queryPlan, String properties) throws URISyntaxException, IOException, InterruptedException {
+        properties = properties == null ? "" : properties;
         HttpRequest request = getHttpRequest(
                 filterString == null ? SEARCH_API : SEARCH_WITH_FILTER_API,
                 filterString == null
