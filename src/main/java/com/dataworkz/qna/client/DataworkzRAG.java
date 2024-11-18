@@ -165,7 +165,9 @@ public class DataworkzRAG {
                         : Map.of("systemId", qnaSystemId, "query", query, "filter", filterString, "properties", properties),
                 queryPlan
                 );
+        long time = System.currentTimeMillis();
         HttpResponse<String> response = getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Time Taken = " + (System.currentTimeMillis() - time));
         Gson gson = new Gson();
         if (response.statusCode() != 200) {
             return new RAGResponse(SEARCH, response, null);
